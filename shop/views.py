@@ -233,12 +233,11 @@ def login_view(request):
 def logout_view(request):
     auth_logout(request)
     return redirect('shop:home')
-
 import random
 import urllib.parse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.db import transaction  # Импортируем для безопасности базы данных
+from django.db import transaction
 from .models import Product, Order, OrderItem
 
 @login_required(login_url='shop:login')
@@ -270,35 +269,7 @@ def checkout(request):
         city = request.POST.get('city')
         address = request.POST.get('address')
 
-        # ============================================================
-        # ПРОВЕРКА НАЛИЧИЯ РАЗМЕРОВ ПЕРЕД СОЗДАНИЕМ ЗАКАЗА
-        # ============================================================
-        for item in cart_items:
-            product = item['product']
-            chosen_size = str(item['size']).strip()
-
-            # Получаем актуальный список размеров из базы данных
-            if product.sizes:
-                current_sizes = [s.strip() for s in product.sizes.split(',') if s.strip()]
-            else:
-                current_sizes = []
-
-            # Если выбранного размера нет в списке доступных
-            if chosen_size not in current_sizes:
-                messages.error(
-                    request,
-                    f"К сожалению, размер {chosen_size} для товара '{product.name}' уже закончился!"
-                )
-                # Возвращаем пользователя обратно на страницу оформления с ошибкой
-                context = {
-                    'cart_items': cart_items,
-                    'total_price': total_price,
-                    'total_quantity': total_quantity,
-                }
-                return render(request, 'shop/checkout.html', context)
-        # ============================================================
-
-        # Если все проверки прошли успешно, создаем заказ в базе данных
+        # 1. Сохраняем заказ в базу данных напрямую (БЕЗ ПРОВЕРКИ НАЛИЧИЯ)
         order = Order.objects.create(
             user=request.user,
             name=name,
@@ -317,7 +288,7 @@ def checkout(request):
                 size=item['size']
             )
 
-        # Формируем текст сообщения для WhatsApp
+        # 2. Формируем красивый текст сообщения для WhatsApp
         message = (
             f"🔔 *НОВЫЙ ЗАКАЗ LI-NING!* 🔔\n\n"
             f"📦 *Номер заказа:* #{order.id}\n"
@@ -334,9 +305,10 @@ def checkout(request):
 
             message += f"▪️ {product.name} (Разм: {chosen_size}) — {quantity} шт. x {product.price} сом\n"
 
-            # Удаляем размер из строки sizes (мы уже точно знаем, что он там есть)
+            # ЛОГИКА УДАЛЕНИЯ РАЗМЕРА ИЗ СТРОКИ SIZES
             if product.sizes:
                 current_sizes = [s.strip() for s in product.sizes.split(',') if s.strip()]
+
                 if chosen_size in current_sizes:
                     current_sizes.remove(chosen_size)
                     product.sizes = ",".join(current_sizes)
@@ -347,7 +319,7 @@ def checkout(request):
         # Кодируем текст для ссылки
         encoded_message = urllib.parse.quote(message)
 
-        # Номера менеджеров
+        # Твои 4 номера менеджеров
         whatsapp_numbers = [
             "996500706290",
             "996501358735",
@@ -363,12 +335,17 @@ def checkout(request):
 
         return redirect(whatsapp_url)
 
+    # Отображение страницы оформления для GET-запроса
     context = {
         'cart_items': cart_items,
         'total_price': total_price,
         'total_quantity': total_quantity,
     }
     return render(request, 'shop/checkout.html', context)
+
+
+
+
 @login_required(login_url='shop:login')  # Если пользователь не вошел, Django перекинет его на логин
 def profile_view(request):
     user_orders = request.user.orders.all().order_by('-created_at')
