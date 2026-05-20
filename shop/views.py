@@ -388,24 +388,22 @@ def admin_dashboard(request):
 
 @staff_member_required
 def admin_team(request):
-    # Жестко берем ВСЕ профили без всяких фильтров и условий
+    # Берем абсолютно ВСЕХ менеджеров, чтобы карточки были всегда!
     managers = ManagerProfile.objects.all()
     payout_logs = PayoutLog.objects.select_related('manager__user').order_by('-date')[:10]
 
     for manager in managers:
-        # Считаем выручку по ID менеджера. Исключаем только статус 'выплачено'
+        # Фильтруем по ТЕЛЕФОНУ, так как поля manager_id в модели Order не существует
         revenue_data = Order.objects.filter(
-            manager_id=manager.id
+            manager_phone=manager.phone
         ).exclude(status='выплачено').aggregate(total=Sum('total_price'))
 
-        # Если заказов нет, ставим 0
         manager.revenue = revenue_data['total'] or 0
 
-        # Защита от пустых значений (None) в базе данных
+        # Защита от пустых значений
         bonus_percent = manager.bonus_percent or 0
         salary = manager.salary or 0
 
-        # Считаем сумму к выплате
         manager.current_payout = (float(manager.revenue) * float(bonus_percent) / 100) + float(salary)
 
     return render(request, 'shop/admin_team.html', {
