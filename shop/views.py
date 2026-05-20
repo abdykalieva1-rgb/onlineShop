@@ -660,3 +660,8 @@ def pay_manager(request, manager_id):
             orders.update(status='выплачено')
 
     return redirect('shop:admin_team')
+
+@login_required(login_url='shop:login')
+def profile(request):
+    # Возвращаем шаблон профиля (поменяй 'shop/profile.html' на твой правильный шаблон, если он другой)
+    return render(request, 'shop/profile.html')
