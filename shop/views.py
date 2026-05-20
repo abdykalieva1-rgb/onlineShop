@@ -238,11 +238,11 @@ def logout_view(request):
 
 import random
 import urllib.parse
-import requests  # 🔥 Добавили библиотеку для фоновых запросов
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from .models import Product, Order, OrderItem
+
 
 @login_required(login_url='shop:login')
 @transaction.atomic
@@ -265,19 +265,24 @@ def checkout(request):
 
     if request.method == 'POST':
         name = request.POST.get('name')
-        phone = request.POST.get('phone')
+        phone = request.POST.get('phone')  # Телефон покупателя
         city = request.POST.get('city')
         address = request.POST.get('address')
 
-        # 📋 Список твоих двух номеров
-        MY_WHATSAPP_NUMBERS = ["996500060729", "996501358735"]
+        # 🔥 НАДЁЖНЫЕ НОМЕРА: Пропиши здесь два твоих номера телефона
+        # (Например: "996555112233", "996700445566")
+        NUMBER_1 = "996500070629"
+        NUMBER_2 = "996501358735"
+
+        # Покупателя перенаправит в чат к первому номеру, но внутри будут видны оба!
+        chosen_phone = NUMBER_1
 
         # Сохраняем заказ в базу данных
         order = Order.objects.create(
             user=request.user,
             name=name,
             phone=phone,
-            manager_phone=MY_WHATSAPP_NUMBERS[0], # Пишем первый по умолчанию в базу
+            manager_phone=chosen_phone,
             city=city,
             address=address,
             total_price=total_price
@@ -291,19 +296,23 @@ def checkout(request):
                 size=item['size']
             )
 
-        # Формируем текст сообщения
+        # Формируем текст для WhatsApp (Включаем информацию для обоих номеров)
         message = (
             f"🔔 *НОВЫЙ ЗАКАЗ LI-NING!* 🔔\n\n"
             f"📦 *Номер заказа:* #{order.id}\n"
             f"👤 *Покупатель:* {name}\n"
             f"📞 *Телефон:* {phone}\n"
             f"📍 *Адрес:* {city}, {address}\n\n"
+            f"👥 *Менеджеры оповещены:* \n"
+            f"1️⃣ {NUMBER_1}\n"
+            f"2️⃣ {NUMBER_2}\n\n"
             f"👟 *Товары:*\n"
         )
         for item in cart_items:
             product = item['product']
             message += f"▪️ {product.name} (Разм: {item['size']}) — {item['quantity']} шт.\n"
 
+            # Списание размеров
             if product.sizes:
                 current_sizes = [s.strip() for s in product.sizes.split(',') if s.strip()]
                 chosen_size = str(item['size']).strip()
@@ -315,25 +324,19 @@ def checkout(request):
         message += f"\n💰 *Итого к оплате:* {total_price} сом"
         encoded_message = urllib.parse.quote(message)
 
-        # 🔥 ФОНОВАЯ ОТПРАВКА НА ОБА НОМЕРА (через бесплатное веб-api)
-        for num in MY_WHATSAPP_NUMBERS:
-            try:
-                # Внимание: для работы скрытой отправки без ведома юзера обычно используют Green-API или ботов.
-                # Если вы хотите просто по очереди открыть веб-клиент, это технически невозможно.
-                # Данный код имитирует отправку уведомления.
-                pass
-            except Exception as e:
-                print(f"Ошибка отправки на номер {num}: {e}")
+        # Генерация чистой ссылки редиректа без сбоев сервера
+        whatsapp_url = f"https://api.whatsapp.com/send?phone={chosen_phone}&text={encoded_message}"
 
-        # Очищаем корзину
         request.session['cart'] = {}
         request.session.modified = True
 
-        # Вместо редиректа на один WhatsApp, перенаправляем на страницу успешного заказа
-        return render(request, 'shop/order_success.html', {'order': order})
+        return redirect(whatsapp_url)
 
     context = {'cart_items': cart_items, 'total_price': total_price, 'total_quantity': total_quantity}
     return render(request, 'shop/checkout.html', context)
+
+
+
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, Count
