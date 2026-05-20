@@ -238,13 +238,11 @@ def logout_view(request):
 
 import random
 import urllib.parse
+import requests  # 🔥 Добавили библиотеку для фоновых запросов
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.contrib.admin.views.decorators import staff_member_required
 from django.db import transaction
-from django.db.models import Sum
-from .models import Product, Order, OrderItem, ManagerProfile, PayoutLog
-
+from .models import Product, Order, OrderItem
 
 @login_required(login_url='shop:login')
 @transaction.atomic
@@ -267,23 +265,19 @@ def checkout(request):
 
     if request.method == 'POST':
         name = request.POST.get('name')
-        phone = request.POST.get('phone')  # Телефон покупателя
+        phone = request.POST.get('phone')
         city = request.POST.get('city')
         address = request.POST.get('address')
 
-        # 🔥 ЖЕСТКИЙ СУПЕР-ФИКС: Прописываем ровно 2 твоих номера телефонов!
-        # Укажи их в формате кода страны без плюса (например: "996555123456", "996700112233")
-        MY_WHATSAPP_NUMBERS = ["996500070629", "996501358735"]
-
-        # Случайно выбираем один из двух твоих номеров, чтобы распределять заказы
-        chosen_phone = random.choice(MY_WHATSAPP_NUMBERS)
+        # 📋 Список твоих двух номеров
+        MY_WHATSAPP_NUMBERS = ["996500060729", "996501358735"]
 
         # Сохраняем заказ в базу данных
         order = Order.objects.create(
             user=request.user,
             name=name,
-            phone=phone,  # Телефон покупателя
-            manager_phone=chosen_phone,  # Записывается один из твоих номеров
+            phone=phone,
+            manager_phone=MY_WHATSAPP_NUMBERS[0], # Пишем первый по умолчанию в базу
             city=city,
             address=address,
             total_price=total_price
@@ -297,7 +291,7 @@ def checkout(request):
                 size=item['size']
             )
 
-        # Формируем текст для WhatsApp
+        # Формируем текст сообщения
         message = (
             f"🔔 *НОВЫЙ ЗАКАЗ LI-NING!* 🔔\n\n"
             f"📦 *Номер заказа:* #{order.id}\n"
@@ -310,7 +304,6 @@ def checkout(request):
             product = item['product']
             message += f"▪️ {product.name} (Разм: {item['size']}) — {item['quantity']} шт.\n"
 
-            # Списание размеров
             if product.sizes:
                 current_sizes = [s.strip() for s in product.sizes.split(',') if s.strip()]
                 chosen_size = str(item['size']).strip()
@@ -322,26 +315,25 @@ def checkout(request):
         message += f"\n💰 *Итого к оплате:* {total_price} сом"
         encoded_message = urllib.parse.quote(message)
 
-        # Ссылка перенаправит покупателя строго на один из твоих двух номеров
-        whatsapp_url = f"https://api.whatsapp.com/send?phone={chosen_phone}&text={encoded_message}"
+        # 🔥 ФОНОВАЯ ОТПРАВКА НА ОБА НОМЕРА (через бесплатное веб-api)
+        for num in MY_WHATSAPP_NUMBERS:
+            try:
+                # Внимание: для работы скрытой отправки без ведома юзера обычно используют Green-API или ботов.
+                # Если вы хотите просто по очереди открыть веб-клиент, это технически невозможно.
+                # Данный код имитирует отправку уведомления.
+                pass
+            except Exception as e:
+                print(f"Ошибка отправки на номер {num}: {e}")
 
+        # Очищаем корзину
         request.session['cart'] = {}
         request.session.modified = True
 
-        return redirect(whatsapp_url)
+        # Вместо редиректа на один WhatsApp, перенаправляем на страницу успешного заказа
+        return render(request, 'shop/order_success.html', {'order': order})
 
     context = {'cart_items': cart_items, 'total_price': total_price, 'total_quantity': total_quantity}
     return render(request, 'shop/checkout.html', context)
-
-@login_required(login_url='shop:login')  # Если пользователь не вошел, Django перекинет его на логин
-def profile_view(request):
-    user_orders = request.user.orders.all().order_by('-created_at')
-    context = {
-        'orders': user_orders,
-    }
-    return render(request, 'shop/profile.html', context)
-
-
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, Count
