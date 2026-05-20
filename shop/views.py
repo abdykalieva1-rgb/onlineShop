@@ -389,8 +389,7 @@ def admin_dashboard(request):
 @staff_member_required
 def admin_team(request):
     managers = ManagerProfile.objects.select_related('user').all()
-    payout_logs = PayoutLog.objects.select_related('manager__user').order_all()[:10]  # или .order_by('-date')
-
+    payout_logs = PayoutLog.objects.select_related('manager__user').order_by('-date')[:10]
     for manager in managers:
         # ИСПРАВЛЕНО: Считаем выручку по ВСЕМ заказам менеджера, кроме уже выплаченных ('выплачено')
         revenue_data = Order.objects.filter(
