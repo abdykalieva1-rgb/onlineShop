@@ -234,12 +234,16 @@ def login_view(request):
 def logout_view(request):
     auth_logout(request)
     return redirect('shop:home')
+
+
 import random
 import urllib.parse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
 from django.db import transaction
-from .models import Product, Order, OrderItem
+from django.db.models import Sum
+from .models import Product, Order, OrderItem, ManagerProfile, PayoutLog
 
 
 @login_required(login_url='shop:login')
@@ -263,24 +267,23 @@ def checkout(request):
 
     if request.method == 'POST':
         name = request.POST.get('name')
-        phone = request.POST.get('phone')  # Это телефон покупателя
+        phone = request.POST.get('phone')  # Телефон покупателя
         city = request.POST.get('city')
         address = request.POST.get('address')
 
-        # 1. Автоматически выбираем одного из 4 менеджеров
-        whatsapp_numbers = [
-            "996500070629",  # meder
-            "996501358735",  # илгиз
-            "996220041647"
-        ]
-        chosen_phone = random.choice(whatsapp_numbers)
+        # 🔥 ЖЕСТКИЙ СУПЕР-ФИКС: Прописываем ровно 2 твоих номера телефонов!
+        # Укажи их в формате кода страны без плюса (например: "996555123456", "996700112233")
+        MY_WHATSAPP_NUMBERS = ["996500070629", "996501358735"]
 
-        # 2. Сохраняем заказ в базу данных
+        # Случайно выбираем один из двух твоих номеров, чтобы распределять заказы
+        chosen_phone = random.choice(MY_WHATSAPP_NUMBERS)
+
+        # Сохраняем заказ в базу данных
         order = Order.objects.create(
             user=request.user,
             name=name,
             phone=phone,  # Телефон покупателя
-            manager_phone=chosen_phone,  # <-- БАЗА ТЕПЕРЬ ЗАПОМНИТ МЕНЕДЖЕРА!
+            manager_phone=chosen_phone,  # Записывается один из твоих номеров
             city=city,
             address=address,
             total_price=total_price
@@ -294,7 +297,7 @@ def checkout(request):
                 size=item['size']
             )
 
-        # 3. Формируем текст для WhatsApp
+        # Формируем текст для WhatsApp
         message = (
             f"🔔 *НОВЫЙ ЗАКАЗ LI-NING!* 🔔\n\n"
             f"📦 *Номер заказа:* #{order.id}\n"
@@ -318,6 +321,8 @@ def checkout(request):
 
         message += f"\n💰 *Итого к оплате:* {total_price} сом"
         encoded_message = urllib.parse.quote(message)
+
+        # Ссылка перенаправит покупателя строго на один из твоих двух номеров
         whatsapp_url = f"https://api.whatsapp.com/send?phone={chosen_phone}&text={encoded_message}"
 
         request.session['cart'] = {}
@@ -327,8 +332,6 @@ def checkout(request):
 
     context = {'cart_items': cart_items, 'total_price': total_price, 'total_quantity': total_quantity}
     return render(request, 'shop/checkout.html', context)
-
-
 
 @login_required(login_url='shop:login')  # Если пользователь не вошел, Django перекинет его на логин
 def profile_view(request):
@@ -386,35 +389,34 @@ def admin_dashboard(request):
     return render(request, 'shop/admin_dashboard.html', context)
 
 
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib.admin.views.decorators import staff_member_required
+from django.db.models import Sum
+from .models import ManagerProfile, Order, PayoutLog
+
+
 @staff_member_required
 def admin_team(request):
-    # Берем абсолютно ВСЕХ менеджеров, чтобы карточки были всегда!
+    # Карточки будут ВСЕГДА на странице
     managers = ManagerProfile.objects.all()
     payout_logs = PayoutLog.objects.select_related('manager__user').order_by('-date')[:10]
 
     for manager in managers:
-        # Фильтруем по ТЕЛЕФОНУ, так как поля manager_id в модели Order не существует
+        # Считаем выручку строго по совпадению телефона
         revenue_data = Order.objects.filter(
             manager_phone=manager.phone
         ).exclude(status='выплачено').aggregate(total=Sum('total_price'))
 
         manager.revenue = revenue_data['total'] or 0
 
-        # Защита от пустых значений
         bonus_percent = manager.bonus_percent or 0
         salary = manager.salary or 0
-
         manager.current_payout = (float(manager.revenue) * float(bonus_percent) / 100) + float(salary)
 
     return render(request, 'shop/admin_team.html', {
         'managers': managers,
         'payout_logs': payout_logs
     })
-
-
-
-
-
 
 
 
@@ -583,56 +585,37 @@ def admin_orders(request):
 
 from django.db.models import Sum
 from .models import Order, ManagerProfile
-
 @login_required(login_url='shop:login')
 def admin_finances(request):
-    # Проверяем, что зашел именно администратор/персонал
     if not request.user.is_staff:
         return redirect('shop:home')
-
-    # Словарь, связывающий телефоны менеджеров из твоего списка с их именами/логинами в базе
-    # Убедись, что пользователи с такими username (например, meder, edil, azamat) созданы в базе!
-    phone_to_username = {
-        "996500706290": "edil",
-        "996501358735": "meder",
-        "996707319213": "azamat",
-        "996704215450": "nurmanbet"
-    }
 
     managers_data = []
     total_shop_revenue = 0
 
-    # Получаем всех сотрудников, у которых настроен профиль менеджера
+    # 🔥 ИСПРАВЛЕНО: Убрали ручные словари с телефонами. Всё берем динамически!
     profiles = ManagerProfile.objects.select_related('user')
 
     for profile in profiles:
-        # Ищем, какой номер телефона закреплен за этим username
-        manager_phone = None
-        for phone, username in phone_to_username.items():
-            if username == profile.user.username:
-                manager_phone = phone
-                break
-
-        # Считаем выручку, которую принес данный менеджер (фильтруем по его номеру телефона в заказах)
-        if manager_phone:
-            manager_revenue = Order.objects.filter(phone=manager_phone).aggregate(total=Sum('total_price'))['total'] or 0
-        else:
-            manager_revenue = 0
+        # Считаем выручку по номеру телефона менеджера из его же профиля
+        manager_revenue = Order.objects.filter(
+            manager_phone=profile.phone
+        ).aggregate(total=Sum('total_price'))['total'] or 0
 
         total_shop_revenue += manager_revenue
 
-        # Рассчитываем бонус и итоговую сумму к выплате
-        bonus_amount = float(manager_revenue) * (profile.bonus_percent / 100.0)
-        total_payout = float(profile.salary) + bonus_amount
+        bonus_amount = float(manager_revenue) * (float(profile.bonus_percent or 0) / 100.0)
+        total_payout = float(profile.salary or 0) + bonus_amount
 
+        username = profile.user.username if profile.user else "manager"
         managers_data.append({
-            'name': profile.user.get_full_name() or profile.user.username,
-            'role': profile.get_role_display(),
+            'name': profile.user.get_full_name() or username if profile.user else "Без имени",
+            'role': profile.get_role_display() if hasattr(profile, 'get_role_display') else "Менеджер",
             'salary': profile.salary,
             'bonus_percent': profile.bonus_percent,
             'revenue': manager_revenue,
             'payout': total_payout,
-            'first_letter': profile.user.username[0].upper() if profile.user.username else 'M'
+            'first_letter': username[0].upper()
         })
 
     context = {
@@ -646,12 +629,30 @@ from django.shortcuts import get_object_or_404, redirect
 from django.contrib.admin.views.decorators import staff_member_required
 from .models import ManagerProfile, PayoutLog, Order  # проверь названия своих моделей
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @staff_member_required
 def pay_manager(request, manager_id):
     if request.method == 'POST':
         manager = get_object_or_404(ManagerProfile, id=manager_id)
 
-        # ИСПРАВЛЕНО: Берем все заказы менеджера, которые еще не были выплачены
         orders = Order.objects.filter(
             manager_phone=manager.phone
         ).exclude(status='выплачено')
@@ -664,7 +665,6 @@ def pay_manager(request, manager_id):
 
         if current_payout > 0:
             PayoutLog.objects.create(manager=manager, amount=current_payout)
-            # Отмечаем эти заказы как выплаченные, чтобы они ушли из текущей выручки
             orders.update(status='выплачено')
 
     return redirect('shop:admin_team')
