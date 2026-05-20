@@ -388,19 +388,22 @@ def admin_dashboard(request):
 
 @staff_member_required
 def admin_team(request):
-    managers = ManagerProfile.objects.select_related('user').all()
+    # ИСПРАВЛЕНО: убрали select_related, чтобы профили отображались всегда!
+    managers = ManagerProfile.objects.all()
     payout_logs = PayoutLog.objects.select_related('manager__user').order_by('-date')[:10]
+
     for manager in managers:
-        # ИСПРАВЛЕНО: Считаем выручку по ВСЕМ заказам менеджера, кроме уже выплаченных ('выплачено')
+        # Считаем выручку по ВСЕМ заказам менеджера, кроме уже выплаченных
         revenue_data = Order.objects.filter(
             manager_phone=manager.phone
         ).exclude(status='выплачено').aggregate(total=Sum('total_price'))
 
         manager.revenue = revenue_data['total'] or 0
 
-        # Считаем текущую зарплату к выплате: (выручка * процент) + оклад
-        manager.current_payout = (float(manager.revenue) * float(manager.bonus_percent or 0) / 100) + float(
-            manager.salary or 0)
+        # Расчет текущей выплаты
+        bonus_percent = manager.bonus_percent or 0
+        salary = manager.salary or 0
+        manager.current_payout = (float(manager.revenue) * float(bonus_percent) / 100) + float(salary)
 
     return render(request, 'shop/admin_team.html', {
         'managers': managers,
