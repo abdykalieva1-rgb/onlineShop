@@ -1,118 +1,136 @@
 {% extends 'shop/base.html' %}
+{% load static %}
 
 {% block content %}
-<div class="bg-gray-900 min-h-screen text-gray-100 p-6">
-    <div class="max-w-7xl mx-auto flex flex-col md:flex-row gap-6">
+<div style="background-color: #0f172a; min-height: 100vh; color: #ffffff; font-family: 'Inter', sans-serif; padding: 25px; display: flex; flex-direction: row; gap: 20px; justify-content: center; align-items: flex-start; box-sizing: border-box;">
 
-        <div class="w-full md:w-64 bg-gray-800 p-6 rounded-xl shadow-lg h-fit">
-            <h2 class="text-blue-500 font-black text-lg tracking-wider mb-6 italic">Панель администратора</h2>
-            <nav class="space-y-2">
-                <a href="{% url 'shop:admin_dashboard' %}" class="flex items-center space-x-3 text-gray-400 hover:bg-gray-700 p-3 rounded-lg font-medium text-sm transition">
-                    <span>📊</span> <span>Главная</span>
-                </a>
-                <a href="{% url 'shop:admin_products' %}" class="flex items-center space-x-3 text-gray-400 hover:bg-gray-700 p-3 rounded-lg font-medium text-sm transition">
-                    <span>👟</span> <span>Товары</span>
-                </a>
-                <a href="{% url 'shop:admin_orders' %}" class="flex items-center space-x-3 text-gray-400 hover:bg-gray-700 p-3 rounded-lg font-medium text-sm transition">
-                    <span>📦</span> <span>Заказы</span>
-                </a>
-                <a href="{% url 'shop:admin_users' %}" class="flex items-center space-x-3 text-gray-400 hover:bg-gray-700 p-3 rounded-lg font-medium text-sm transition">
-                    <span>👥</span> <span>Пользователи</span>
-                </a>
-                <a href="{% url 'shop:admin_team' %}" class="flex items-center space-x-3 bg-blue-700 text-white p-3 rounded-lg font-bold text-sm">
-                    <span>👤</span> <span>Менеджеры</span>
-                </a>
-            </nav>
+    <div style="flex: 0 0 240px; background-color: #1e293b; border-radius: 20px; padding: 20px; box-sizing: border-box; min-height: 500px;">
+        <h5 style="color: #3b82f6; font-style: italic; font-size: 19px; font-weight: bold; margin-top: 0; margin-bottom: 30px; padding-left: 8px; letter-spacing: 0.5px;">
+            Панель администратора
+        </h5>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            <a href="{% url 'shop:admin_dashboard' %}" style="text-decoration: none; color: #94a3b8; padding: 10px 12px; display: flex; align-items: center; font-weight: 500; border-radius: 12px; transition: 0.2s;">
+                <span style="margin-right: 10px; font-size: 16px;">📊</span> Главная
+            </a>
+            <a href="{% url 'shop:admin_products' %}" style="text-decoration: none; color: #94a3b8; padding: 10px 12px; display: flex; align-items: center; font-weight: 500; border-radius: 12px; transition: 0.2s;">
+                <span style="margin-right: 10px; font-size: 16px;">👟</span> Товары
+            </a>
+            <a href="{% url 'shop:admin_orders' %}" style="text-decoration: none; color: #94a3b8; padding: 10px 12px; display: flex; align-items: center; font-weight: 500; border-radius: 12px; transition: 0.2s;">
+                <span style="margin-right: 10px; font-size: 16px;">📦</span> Заказы
+            </a>
+            <a href="{% url 'shop:admin_users' %}" style="text-decoration: none; color: #94a3b8; padding: 10px 12px; display: flex; align-items: center; font-weight: 500; border-radius: 12px; transition: 0.2s;">
+                <span style="margin-right: 10px; font-size: 16px;">👥</span> Пользователи
+            </a>
+            <a href="{% url 'shop:admin_team' %}" style="text-decoration: none; color: #ffffff; background-color: #2563eb; padding: 10px 12px; display: flex; align-items: center; font-weight: 500; border-radius: 12px;">
+                <span style="margin-right: 10px; font-size: 16px;">👤</span> Менеджеры
+            </a>
         </div>
-
-        <div class="flex-1 space-y-6">
-            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                <h2 class="text-xl font-bold text-white mb-2">Управление командой и выплатами</h2>
-                <p class="text-sm text-gray-400 mb-6">Статистика выручки и расчет заработной платы менеджеров</p>
-
-                <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 gap-6">
-                    {% for manager in managers_data %}
-                    <div class="bg-gray-900 p-5 rounded-2xl border border-gray-700 shadow-inner">
-
-                        <div class="flex items-center gap-4 mb-6">
-                            <div class="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-xl font-black text-white">
-                                {{ manager.first_letter }}
-                            </div>
-                            <div>
-                                <h3 class="text-white font-bold text-lg">{{ manager.name }}</h3>
-                                <span class="text-[10px] bg-gray-800 text-blue-400 border border-blue-900 px-2 py-0.5 rounded uppercase font-bold">
-                                    {{ manager.role }}
-                                </span>
-                            </div>
-                        </div>
-
-                        <div class="space-y-3 mb-6">
-                            <div class="flex justify-between text-sm">
-                                <span class="text-gray-500">Оклад:</span>
-                                <span class="text-gray-200 font-semibold">{{ manager.salary }} сом</span>
-                            </div>
-                            <div class="flex justify-between text-sm">
-                                <span class="text-gray-500">Бонус с продаж:</span>
-                                <span class="text-green-500 font-bold">+{{ manager.bonus_percent }}%</span>
-                            </div>
-                            <div class="border-t border-gray-800 my-2 pt-2 flex justify-between text-sm">
-                                <span class="text-gray-500">Принес выручки:</span>
-                                <span class="text-white font-bold">{{ manager.revenue }} сом</span>
-                            </div>
-                        </div>
-
-                        <div class="bg-gray-800 p-4 rounded-xl flex justify-between items-center border border-gray-700">
-                            <span class="text-xs font-bold text-gray-400 uppercase tracking-tighter">К выплате:</span>
-
-                            <span class="text-xl font-black text-blue-500">{{ manager.payout|floatformat:2 }} сом</span>
-                        </div>
-                <form action="{% url 'shop:pay_manager' manager.id %}" method="POST" class="mt-4">
-                            {% csrf_token %}
-                            <button type="submit" onclick="return confirm('Вы уверены, что хотите выплатить зарплату и обнулить текущую сумму?');"
-                                    class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition text-center shadow-lg block">
-                                💵 Выплатить зарплату
-                            </button>
-                        </form>
-                    </div>
-                    {% empty %}
-                    <div class="col-span-full text-center py-10">
-                        <p class="text-gray-500">Профили менеджеров не настроены.</p>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-<div class="bg-gray-800 p-6 rounded-xl border border-gray-700 mt-8">
-                <h2 class="text-xl font-bold text-white mb-2">📜 История последних выплат</h2>
-                <p class="text-sm text-gray-400 mb-4">Архив всех выданных денежных средств команде</p>
-
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm text-gray-400">
-                        <thead class="text-xs uppercase bg-gray-900 text-gray-400 border-b border-gray-700">
-                            <tr>
-                                <th class="p-4">Дата</th>
-                                <th class="p-4">Менеджер</th>
-                                <th class="p-4 text-right">Выплачено</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-700">
-                            {% for log in payout_logs %}
-                            <tr class="hover:bg-gray-700/50 transition">
-                                <td class="p-4 font-medium text-gray-300">{{ log.date|date:"d.m.Y H:i" }}</td>
-                                <td class="p-4 text-white font-semibold">
-                                    {{ log.manager.user.username }}
-                                </td>
-                                <td class="p-4 text-right text-green-400 font-bold">+{{ log.amount }} сом</td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="3" class="text-center py-6 text-gray-500">Выплат еще не производилось.</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
     </div>
+
+    <div style="flex: 1; max-width: 760px; background-color: #1e293b; border-radius: 20px; padding: 25px; box-sizing: border-box; min-height: 600px;">
+        <div style="margin-bottom: 25px; text-align: left;">
+            <h4 style="font-weight: bold; color: #ffffff; margin: 0 0 5px 0; font-size: 24px;">Управление командой и выплатами</h4>
+            <p style="color: #64748b; margin: 0; font-size: 14px;">Статистика выручки и расчет заработной платы менеджеров</p>
+        </div>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: flex-start; box-sizing: border-box;">
+            {% for manager in managers %}
+            <div style="flex: 0 0 calc(50% - 10px); min-width: 280px; background-color: #0f172a; border: 1px solid #233147; border-radius: 20px; padding: 22px; box-sizing: border-box; display: flex; flex-direction: column;">
+
+                <div style="display: flex; align-items: center; margin-bottom: 25px; text-align: left;">
+                    <div style="width: 48px; height: 48px; min-width: 48px; border-radius: 12px; background-color: #2563eb; display: flex; align-items: center; justify-content: center; color: #ffffff; font-weight: bold; font-size: 22px; margin-right: 15px; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);">
+                        {{ manager.user.username|slice:":1"|upper }}
+                    </div>
+                    <div>
+                        <h4 style="font-weight: bold; color: #ffffff; margin: 0 0 4px 0; font-size: 20px; letter-spacing: 0.5px;">
+                            {{ manager.user.username }}
+                        </h4>
+                        <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-start;">
+                            <span style="background-color: rgba(37, 99, 235, 0.15); color: #3b82f6; font-size: 9px; font-weight: bold; padding: 2px 5px; border-radius: 4px; letter-spacing: 0.5px;">МЕНЕДЖЕР ПО</span>
+                            <span style="background-color: rgba(37, 99, 235, 0.15); color: #3b82f6; font-size: 9px; font-weight: bold; padding: 2px 5px; border-radius: 4px; letter-spacing: 0.5px;">ПРОДАЖАМ</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 25px; font-size: 14px; color: #94a3b8; display: flex; flex-direction: column; gap: 10px;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Оклад:</span>
+                        <span style="font-weight: bold; color: #ffffff;">{{ manager.salary }} сом</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Бонус с продаж:</span>
+                        <span style="font-weight: bold; color: #10b981;">+{{ manager.bonus_percent }}%</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Принес выручки:</span>
+                        <span style="font-weight: bold; color: #ffffff;">{{ manager.revenue|default:"0" }} сом</span>
+                    </div>
+                </div>
+
+                <div style="background-color: rgba(30, 41, 59, 0.4); border-radius: 14px; border: 1px solid #233147; padding: 15px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+                    <div style="text-align: left; font-size: 10px; color: #64748b; font-weight: bold; line-height: 1.2; letter-spacing: 0.5px;">
+                        К<br>ВЫПЛАТЕ:
+                    </div>
+                    <div style="text-align: right; display: flex; align-items: baseline; gap: 4px;">
+                        <span style="color: #2563eb; font-size: 26px; font-weight: bold; line-height: 1;">
+                            {{ manager.current_payout }}
+                        </span>
+                        <span style="color: #64748b; font-size: 13px; font-weight: bold;">сом</span>
+                    </div>
+                </div>
+
+                <form action="{% url 'shop:pay_manager' manager.id %}" method="POST" style="margin-top: auto; width: 100%;">
+                    {% csrf_token %}
+                    <button type="submit"
+                            style="width: 100%; border-radius: 12px; font-size: 14px; font-weight: bold; background-color: #10b981; border: none; color: #ffffff; padding: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; gap: 6px;"
+                            {% if manager.current_payout == 0 %}disabled style="background-color: #233147; color: #475569; cursor: not-allowed;"{% endif %}>
+                        💵 Выплатить зарплату
+                    </button>
+                </form>
+            </div>
+            {% empty %}
+            <div style="width: 100%; text-align: center; padding: 40px 0; color: #64748b;">
+                Профили менеджеров не настроены.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div style="flex: 0 0 310px; background-color: #1e293b; border-radius: 20px; padding: 25px; box-sizing: border-box; min-height: 500px; text-align: left;">
+        <h5 style="font-weight: bold; color: #ffffff; margin: 0 0 5px 0; font-size: 18px; display: flex; align-items: center; gap: 6px;">
+            📜 История последних выплат
+        </h5>
+        <p style="color: #64748b; font-size: 13px; margin: 0 0 25px 0;">Архив всех выданных денежных средств команде</p>
+
+        {% if payout_logs %}
+        <div style="width: 100%; overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #ffffff;">
+                <thead>
+                    <tr style="border-bottom: 1px solid #334155; text-transform: uppercase; font-size: 11px; color: #64748b;">
+                        <th style="text-align: left; padding-bottom: 10px;">Дата</th>
+                        <th style="text-align: left; padding-bottom: 10px; padding-left: 10px;">Менеджер</th>
+                        <th style="text-align: right; padding-bottom: 10px;">Выплачено</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in payout_logs %}
+                    <tr style="border-bottom: 1px solid rgba(51, 65, 85, 0.4);">
+                        <td style="padding: 12px 0; color: #64748b; white-space: nowrap;">{{ log.date|date:"d.m.Y H:i" }}</td>
+                        <td style="padding: 12px 10px; font-weight: bold;">{{ log.manager.user.username }}</td>
+                        <td style="padding: 12px 0; text-align: right; font-weight: bold; color: #10b981; white-space: nowrap;">
+                            +{{ log.amount }} сом
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 30px 0; color: #64748b; font-size: 13px;">
+            История выплат пока пуста
+        </div>
+        {% endif %}
+    </div>
+
 </div>
 {% endblock %}
