@@ -388,45 +388,48 @@ def admin_dashboard(request):
 
 @staff_member_required
 def admin_team(request):
-    # 1. Получаем из базы всех менеджеров
-    profiles = ManagerProfile.objects.all()
-    managers_data = []
+    managers = ManagerProfile.objects.select_related('user').all()
+    payout_logs = PayoutLog.objects.select_related('manager__user').order_all()[:10]  # или .order_by('-date')
 
-    # 2. Наполняем список менеджеров расчетами
-    for profile in profiles:
-        # Фильтруем по номеру телефона
-        revenue = Order.objects.filter(
-            manager_phone=profile.phone,
-            status='delivered'  # если в базе на русском, то измени на 'доставлено'
-        ).aggregate(total=Sum('total_price'))['total'] or 0
+    for manager in managers:
+        # ИСПРАВЛЕНО: Считаем выручку по ВСЕМ заказам менеджера, кроме уже выплаченных ('выплачено')
+        revenue_data = Order.objects.filter(
+            manager_phone=manager.phone
+        ).exclude(status='выплачено').aggregate(total=Sum('total_price'))
 
-        # Рассчитываем бонус и выплату
-        bonus = (float(revenue) * float(profile.bonus_percent or 0)) / 100
-        payout = float(profile.salary or 0) + bonus
+        manager.revenue = revenue_data['total'] or 0
 
-        # ИСПРАВЛЕНО: Берем имя из связанного объекта user
-        manager_name = profile.user.username if profile.user else "Менеджер"
+        # Считаем текущую зарплату к выплате: (выручка * процент) + оклад
+        manager.current_payout = (float(manager.revenue) * float(manager.bonus_percent or 0) / 100) + float(
+            manager.salary or 0)
 
-        managers_data.append({
-            'id': profile.id,
-            'name': manager_name,  # Передаем исправленное имя
-            'first_letter': manager_name[0].upper(),  # Первая буква для аватарки
-            'role': 'Менеджер по продажам',
-            'salary': profile.salary,
-            'bonus_percent': profile.bonus_percent,
-            'revenue': revenue,
-            'payout': payout,
-        })
+    return render(request, 'shop/admin_team.html', {
+        'managers': managers,
+        'payout_logs': payout_logs
+    })
 
-    # 3. Получаем историю выплат для таблицы внизу
-    payout_logs = PayoutLog.objects.all().select_related('manager')
 
-    # 4. Передаем переменные в context
-    context = {
-        'managers_data': managers_data,
-        'payout_logs': payout_logs,
-    }
-    return render(request, 'shop/admin_team.html', context)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @login_required(login_url='shop:login')
 def admin_products(request):
     ALLOWED_EMPLOYEES = ['meder', 'elida', 'boss_lining', 'worker_1']
@@ -643,33 +646,25 @@ from django.shortcuts import get_object_or_404, redirect
 from django.contrib.admin.views.decorators import staff_member_required
 from .models import ManagerProfile, PayoutLog, Order  # проверь названия своих моделей
 
-
 @staff_member_required
 def pay_manager(request, manager_id):
     if request.method == 'POST':
         manager = get_object_or_404(ManagerProfile, id=manager_id)
 
-        # 1. Фильтруем заказы по номеру телефона менеджера и статусу 'доставлено'
-        # (так как поля manager_id в модели Order нет)
+        # ИСПРАВЛЕНО: Берем все заказы менеджера, которые еще не были выплачены
         orders = Order.objects.filter(
-            manager_phone=manager.phone,
-            status='доставлено'  # Используем кириллицу, как в твоей базе данных
-        )
+            manager_phone=manager.phone
+        ).exclude(status='выплачено')
 
         current_payout = 0
-        # 2. Вычисляем сумму бонусов от всех доставленных заказов
         for order in orders:
             current_payout += float(order.total_price or 0) * float(manager.bonus_percent or 0) / 100
 
-        # 3. Добавляем фиксированный оклад менеджера к итоговой выплате
         current_payout += float(manager.salary or 0)
 
-        # 4. Если сумма больше нуля, фиксируем выплату и обновляем заказы
         if current_payout > 0:
-            # Создаем лог выплаты в базе данных
             PayoutLog.objects.create(manager=manager, amount=current_payout)
-
-            # Меняем статус заказов, чтобы они заархивировались и больше не попадали в расчет
-            orders.update(status='выплачено')  # или 'архив', главное чтобы не 'доставлено'
+            # Отмечаем эти заказы как выплаченные, чтобы они ушли из текущей выручки
+            orders.update(status='выплачено')
 
     return redirect('shop:admin_team')
