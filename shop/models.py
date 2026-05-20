@@ -65,6 +65,7 @@ class Order(models.Model):
     ]
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
     name = models.CharField(max_length=100)
+    manager_phone = models.CharField(max_length=20, blank=True, null=True, verbose_name="Телефон менеджера")
     phone = models.CharField(max_length=20)
     city = models.CharField(max_length=100)
     address = models.CharField(max_length=255)
@@ -82,3 +83,23 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"{self.product.name} ({self.quantity} шт.)"
+
+
+
+
+
+class ManagerProfile(models.Model):
+    ROLE_CHOICES = [
+        ('manager', 'Менеджер'),
+        ('admin', 'Управляющий'),
+        ('support', 'Сотрудник Call-центра'),
+    ]
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='manager_profile')
+    role = models.CharField(max_length=50, choices=ROLE_CHOICES, default='manager', verbose_name="Роль")
+    salary = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, verbose_name="Оклад")
+    bonus_percent = models.FloatField(default=0.0, verbose_name="Процент бонуса (%)")
+    phone = models.CharField(max_length=20, blank=True, null=True, verbose_name="Номер WhatsApp")
+    def __str__(self):
+        return f"{self.user.get_full_name() or self.user.username} ({self.get_role_display()})"
+

@@ -1,0 +1,81 @@
+{% extends 'shop/base.html' %}
+
+{% block content %}
+<div class="bg-gray-900 min-h-screen text-gray-100 p-6">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row gap-6">
+
+        <div class="w-full md:w-64 bg-gray-800 p-6 rounded-xl shadow-lg h-fit">
+            <h2 class="text-blue-500 font-black text-lg tracking-wider mb-6 italic">Панель администратора</h2>
+            <nav class="space-y-2">
+                <a href="{% url 'shop:admin_dashboard' %}" class="flex items-center space-x-3 text-gray-400 hover:bg-gray-700 p-3 rounded-lg font-medium text-sm transition">
+                    <span>📊</span> <span>Главная</span>
+                </a>
+                <a href="{% url 'shop:admin_products' %}" class="flex items-center space-x-3 text-gray-400 hover:bg-gray-700 p-3 rounded-lg font-medium text-sm transition">
+                    <span>👟</span> <span>Товары</span>
+                </a>
+                <a href="{% url 'shop:admin_orders' %}" class="flex items-center space-x-3 text-gray-400 hover:bg-gray-700 p-3 rounded-lg font-medium text-sm transition">
+                    <span>📦</span> <span>Заказы</span>
+                </a>
+                <a href="{% url 'shop:admin_users' %}" class="flex items-center space-x-3 text-gray-400 hover:bg-gray-700 p-3 rounded-lg font-medium text-sm transition">
+                    <span>👥</span> <span>Пользователи</span>
+                </a>
+                <a href="{% url 'shop:admin_team' %}" class="flex items-center space-x-3 bg-blue-700 text-white p-3 rounded-lg font-bold text-sm">
+                    <span>👤</span> <span>Менеджеры</span>
+                </a>
+            </nav>
+        </div>
+
+        <div class="flex-1 space-y-6">
+            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                <h2 class="text-xl font-bold text-white mb-2">Управление командой и выплатами</h2>
+                <p class="text-sm text-gray-400 mb-6">Статистика выручки и расчет заработной платы менеджеров</p>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 gap-6">
+                    {% for manager in managers_data %}
+                    <div class="bg-gray-900 p-5 rounded-2xl border border-gray-700 shadow-inner">
+
+                        <div class="flex items-center gap-4 mb-6">
+                            <div class="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-xl font-black text-white">
+                                {{ manager.first_letter }}
+                            </div>
+                            <div>
+                                <h3 class="text-white font-bold text-lg">{{ manager.name }}</h3>
+                                <span class="text-[10px] bg-gray-800 text-blue-400 border border-blue-900 px-2 py-0.5 rounded uppercase font-bold">
+                                    {{ manager.role }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3 mb-6">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-500">Оклад:</span>
+                                <span class="text-gray-200 font-semibold">{{ manager.salary }} сом</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-500">Бонус с продаж:</span>
+                                <span class="text-green-500 font-bold">+{{ manager.bonus_percent }}%</span>
+                            </div>
+                            <div class="border-t border-gray-800 my-2 pt-2 flex justify-between text-sm">
+                                <span class="text-gray-500">Принес выручки:</span>
+                                <span class="text-white font-bold">{{ manager.revenue }} сом</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-gray-800 p-4 rounded-xl flex justify-between items-center border border-gray-700">
+                            <span class="text-xs font-bold text-gray-400 uppercase tracking-tighter">К выплате:</span>
+                            <span class="text-xl font-black text-blue-500">{{ manager.payout|floatformat:2 }} сом</span>
+                        </div>
+
+                    </div>
+                    {% empty %}
+                    <div class="col-span-full text-center py-10">
+                        <p class="text-gray-500">Профили менеджеров не настроены.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

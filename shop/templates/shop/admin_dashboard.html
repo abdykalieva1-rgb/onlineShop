@@ -6,48 +6,53 @@
         
         <div class="w-full md:w-64 bg-gray-800 p-6 rounded-xl shadow-lg h-fit">
             <h2 class="text-blue-500 font-black text-lg tracking-wider mb-6 italic">Панель администратора</h2>
-             <nav class="space-y-2">
-                <a href="{% url 'shop:admin_dashboard' %}" class="flex items-center space-x-3 text-gray-400 hover:bg-gray-700 p-3 rounded-lg font-medium text-sm transition">
+            <nav class="space-y-2">
+                <a href="{% url 'shop:admin_dashboard' %}" class="flex items-center space-x-3 bg-blue-700 text-white p-3 rounded-lg font-bold text-sm">
                     <span>📊</span> <span>Главная</span>
                 </a>
                 <a href="{% url 'shop:admin_products' %}" class="flex items-center space-x-3 text-gray-400 hover:bg-gray-700 p-3 rounded-lg font-medium text-sm transition">
                     <span>👟</span> <span>Товары</span>
                 </a>
-                <a href="{% url 'shop:admin_orders' %}" class="flex items-center space-x-3 bg-blue-700 text-white p-3 rounded-lg font-bold text-sm">
+                <a href="{% url 'shop:admin_orders' %}" class="flex items-center space-x-3 text-gray-400 hover:bg-gray-700 p-3 rounded-lg font-medium text-sm transition">
                     <span>📦</span> <span>Заказы</span>
                 </a>
                 <a href="{% url 'shop:admin_users' %}" class="flex items-center space-x-3 text-gray-400 hover:bg-gray-700 p-3 rounded-lg font-medium text-sm transition">
                     <span>👤</span> <span>Пользователи</span>
                 </a>
+                <a href="{% url 'shop:admin_team' %}" class="flex items-center space-x-3 text-gray-400 hover:bg-gray-700 p-3 rounded-lg font-medium text-sm transition">
+                    <span>👤</span> <span>Менеджеры</span>
+                </a>
             </nav>
         </div>
 
         <div class="flex-1 space-y-6">
-            
+
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                    <p class="text-xs text-gray-400 uppercase font-bold tracking-wider">Всего заказов</p>
-                    <p class="text-3xl font-black text-white mt-2">{{ total_orders }}</p>
+                <div style="background: #1e293b; border-radius: 15px; padding: 20px; border: 1px solid #334155; color: white;">
+                    <div style="color: #94a3b8; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Всего заказов</div>
+                    <div style="font-size: 32px; font-weight: 700; margin-top: 10px; color: #ffffff;">{{ total_orders }}</div>
                 </div>
-                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                    <p class="text-xs text-gray-400 uppercase font-bold tracking-wider">Клиенты</p>
-                    <p class="text-3xl font-black text-white mt-2">{{ total_customers }}</p>
+                <div style="background: #1e293b; border-radius: 15px; padding: 20px; border: 1px solid #334155; color: white;">
+                    <div style="color: #94a3b8; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Клиенты</div>
+                    <div style="font-size: 32px; font-weight: 700; margin-top: 10px; color: #ffffff;">{{ total_users }}</div>
                 </div>
-                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                    <p class="text-xs text-gray-400 uppercase font-bold tracking-wider">Общая выручка</p>
-                    <p class="text-3xl font-black text-blue-500 mt-2">{{ total_revenue }} сом</p>
+                <div style="background: #1e293b; border-radius: 15px; padding: 20px; border: 1px solid #334155; color: white;">
+                    <div style="color: #94a3b8; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Общая выручка</div>
+                    <div style="font-size: 28px; font-weight: 700; margin-top: 10px; color: #3b82f6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        {{ total_price }} <span style="font-size: 18px; color: #94a3b8; font-weight: 500;">сом</span>
+                    </div>
                 </div>
-                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                    <p class="text-xs text-gray-400 uppercase font-bold tracking-wider">Товары в наличии</p>
-                    <p class="text-3xl font-black text-white mt-2">{{ total_products }}</p>
+                <div style="background: #1e293b; border-radius: 15px; padding: 20px; border: 1px solid #334155; color: white;">
+                    <div style="color: #94a3b8; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Товары в наличии</div>
+                    <div style="font-size: 32px; font-weight: 700; margin-top: 10px; color: #ffffff;">{{ total_products }}</div>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
+
                 <div class="lg:col-span-2 bg-gray-800 p-6 rounded-xl border border-gray-700">
-                    <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4">Продажи за последние 7 дней</h3>
-                    <div class="h-64">
+                    <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider mb-6">Продажи за последние 7 дней</h3>
+                    <div class="h-72">
                         <canvas id="salesChart"></canvas>
                     </div>
                 </div>
@@ -85,19 +90,26 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-const ctx = document.getElementById('salesChart').getContext('2d');
+    const ctx = document.getElementById('salesChart').getContext('2d');
+
+    // Передаем правильные переменные из context во views.py
+    const labelsData = {{ sales_dates|safe }};
+    const amountsData = {{ sales_amounts|safe }};
+
     const salesChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: {{ chart_labels|safe }},
+            labels: labelsData,
             datasets: [{
                 label: 'Выручка (сом)',
-                data: {{ chart_data|safe }},
+                data: amountsData,
                 borderColor: '#3b82f6',
                 backgroundColor: 'rgba(59, 130, 246, 0.1)',
                 borderWidth: 3,
                 fill: true,
-                tension: 0.3
+                tension: 0.35, /* Делает линию плавной волной */
+                pointBackgroundColor: '#3b82f6',
+                pointRadius: 4
             }]
         },
         options: {
@@ -105,8 +117,14 @@ const ctx = document.getElementById('salesChart').getContext('2d');
             maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: {
-                x: { grid: { color: '#374151' }, ticks: { color: '#9ca3af' } },
-                y: { grid: { color: '#374151' }, ticks: { color: '#9ca3af' } }
+                x: {
+                    grid: { color: '#374151' },
+                    ticks: { color: '#9ca3af' }
+                },
+                y: {
+                    grid: { color: '#374151' },
+                    ticks: { color: '#9ca3af' }
+                }
             }
         }
     });

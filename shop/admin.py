@@ -1,5 +1,7 @@
 from django.contrib import admin
-from .models import Category, Product, Order, OrderItem
+from .models import Category, Product, Order, OrderItem,ManagerProfile
+
+admin.site.register(ManagerProfile)
 
 # Настройка отображения категорий
 @admin.register(Category)

@@ -7,17 +7,20 @@
         <div class="w-full md:w-64 bg-gray-800 p-6 rounded-xl shadow-lg h-fit">
             <h2 class="text-blue-500 font-black text-lg tracking-wider mb-6 italic">Панель администратора</h2>
             <nav class="space-y-2">
-                <a href="{% url 'shop:admin_dashboard' %}" class="flex items-center space-x-3 text-gray-400 hover:bg-gray-700 p-3 rounded-lg font-medium text-sm transition">
+                <a href="{% url 'shop:admin_dashboard' %}" class="flex items-center space-x-3 bg-blue-700 text-white p-3 rounded-lg font-bold text-sm">
                     <span>📊</span> <span>Главная</span>
                 </a>
                 <a href="{% url 'shop:admin_products' %}" class="flex items-center space-x-3 text-gray-400 hover:bg-gray-700 p-3 rounded-lg font-medium text-sm transition">
                     <span>👟</span> <span>Товары</span>
                 </a>
-                <a href="{% url 'shop:admin_orders' %}" class="flex items-center space-x-3 bg-blue-700 text-white p-3 rounded-lg font-bold text-sm">
+                <a href="{% url 'shop:admin_orders' %}" class="flex items-center space-x-3 text-gray-400 hover:bg-gray-700 p-3 rounded-lg font-medium text-sm transition">
                     <span>📦</span> <span>Заказы</span>
                 </a>
                 <a href="{% url 'shop:admin_users' %}" class="flex items-center space-x-3 text-gray-400 hover:bg-gray-700 p-3 rounded-lg font-medium text-sm transition">
                     <span>👤</span> <span>Пользователи</span>
+                </a>
+                <a href="{% url 'shop:admin_team' %}" class="flex items-center space-x-3 text-gray-400 hover:bg-gray-700 p-3 rounded-lg font-medium text-sm transition">
+                    <span>👤</span> <span>Менеджеры</span>
                 </a>
             </nav>
         </div>

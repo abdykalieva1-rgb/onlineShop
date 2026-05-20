@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>SalesPro | CRM Финансы</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #eef2f7;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+        }
+        .sidebar {
+            width: 240px;
+            background: white;
+            padding: 20px;
+            height: 90vh;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-right: 30px;
+        }
+        .sidebar h2 { color: #1e3a8a; margin-bottom: 30px; }
+        .sidebar a { display: block; padding: 12px; color: #475569; text-decoration: none; font-weight: 500; border-radius: 8px; margin-bottom: 5px; }
+        .sidebar a.active { background: #eff6ff; color: #2563eb; }
+
+        .main-content { flex: 1; }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 25px;
+        }
+        .crm-card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+            border: 1px solid #e2e8f0;
+        }
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        .avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            background: #10b981;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 600;
+            margin-right: 15px;
+        }
+        .role-badge {
+            background: #f1f5f9;
+            color: #64748b;
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+            display: inline-block;
+            margin-top: 4px;
+        }
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+        .label { color: #94a3b8; }
+        .value { color: #1e293b; font-weight: 600; }
+        .divider { height: 1px; background: #f1f5f9; margin: 15px 0; }
+        .payout-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+        }
+        .payout-value { color: #2563eb; font-size: 18px; font-weight: 700; }
+
+        /* Особая карточка для общей прибыли магазина */
+        .shop-card { background: #fef3c7; border-color: #fde68a; }
+        .shop-avatar { background: #f59e0b; }
+        .shop-payout { color: #b45309; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2>SalesPro</h2>
+        <a href="/dashboard/">Аналитика</a>
+        <a href="/dashboard/products/">Склад товаров</a>
+        <a href="#" class="active">Команда & Выручка</a>
+    </div>
+
+    <div class="main-content">
+        <h1 style="color: #1e293b; margin-bottom: 30px;">Разработка системы учета прибыли</h1>
+
+        <div class="grid-container">
+            <div class="crm-card shop-card">
+                <div class="card-header">
+                    <div class="avatar shop-avatar">🤖</div>
+                    <div>
+                        <div style="font-weight:700; color:#92400e;">Онлайн-магазин</div>
+                        <span class="role-badge" style="background:#fef08a; color:#854d0e;">Робот</span>
+                    </div>
+                </div>
+                <div style="text-align: center; margin: 20px 0;">
+                    <div class="label" style="color: #b45309;">ЧИСТАЯ ПРИБЫЛЬ ЗА ВСЕ ВРЕМЯ</div>
+                    <div class="payout-value shop-payout" style="font-size: 26px; margin-top: 10px;">{{ total_shop_revenue }} сом</div>
+                    <div class="label" style="font-size:12px; margin-top:5px;">Не требует выплат</div>
+                </div>
+            </div>
+
+            {% for manager in managers_data %}
+            <div class="crm-card">
+                <div class="card-header">
+                    <div class="avatar" style="background: {% cycle '#10b981' '#3b82f6' '#8b5cf6' '#ec4899' %};">
+                        {{ manager.first_letter }}
+                    </div>
+                    <div>
+                        <div style="font-weight:700; color:#1e293b;">{{ manager.name }}</div>
+                        <span class="role-badge">{{ manager.role }}</span>
+                    </div>
+                </div>
+
+                <div class="stat-row">
+                    <span class="label">ОКЛАД</span>
+                    <span class="value">{{ manager.salary }} сом</span>
+                </div>
+                <div class="stat-row">
+                    <span class="label">БОНУС</span>
+                    <span class="value">+{{ manager.bonus_percent }}%</span>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="stat-row">
+                    <span class="label">Принес выручки:</span>
+                    <span class="value">{{ manager.revenue }} сом</span>
+                </div>
+
+                <div class="payout-row">
+                    <span class="label" style="font-weight:600; color:#1e293b;">К ВЫПЛАТЕ:</span>
+                    <span class="payout-value">{{ manager.payout|floatformat:2 }} сом</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+</body>
+</html>

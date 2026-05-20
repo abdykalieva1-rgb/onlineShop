@@ -240,6 +240,7 @@ from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from .models import Product, Order, OrderItem
 
+
 @login_required(login_url='shop:login')
 @transaction.atomic
 def checkout(request):
@@ -248,15 +249,11 @@ def checkout(request):
     total_price = 0
     total_quantity = 0
 
-    # Собираем данные из корзины
     for item_key, item_data in cart.items():
         product_id = item_data.get('product_id', item_key)
         product = get_object_or_404(Product, id=product_id)
-
-        item_total = product.price * item_data['quantity']
-        total_price += item_total
+        total_price += product.price * item_data['quantity']
         total_quantity += item_data['quantity']
-
         cart_items.append({
             'product': product,
             'quantity': item_data['quantity'],
@@ -265,21 +262,28 @@ def checkout(request):
 
     if request.method == 'POST':
         name = request.POST.get('name')
-        phone = request.POST.get('phone')
+        phone = request.POST.get('phone')  # Это телефон покупателя
         city = request.POST.get('city')
         address = request.POST.get('address')
 
-        # 1. Сохраняем заказ в базу данных напрямую (БЕЗ ПРОВЕРКИ НАЛИЧИЯ)
+        # 1. Автоматически выбираем одного из 4 менеджеров
+        whatsapp_numbers = [
+            "996500070629",  # meder
+            "996501358735",  # илгиз
+        ]
+        chosen_phone = random.choice(whatsapp_numbers)
+
+        # 2. Сохраняем заказ в базу данных
         order = Order.objects.create(
             user=request.user,
             name=name,
-            phone=phone,
+            phone=phone,  # Телефон покупателя
+            manager_phone=chosen_phone,  # <-- БАЗА ТЕПЕРЬ ЗАПОМНИТ МЕНЕДЖЕРА!
             city=city,
             address=address,
             total_price=total_price
         )
 
-        # Сохраняем все товары из корзины в этот заказ
         for item in cart_items:
             OrderItem.objects.create(
                 order=order,
@@ -288,61 +292,39 @@ def checkout(request):
                 size=item['size']
             )
 
-        # 2. Формируем красивый текст сообщения для WhatsApp
+        # 3. Формируем текст для WhatsApp
         message = (
             f"🔔 *НОВЫЙ ЗАКАЗ LI-NING!* 🔔\n\n"
             f"📦 *Номер заказа:* #{order.id}\n"
-            f"👤 *Покупатель:* {name} (Логин: {request.user.username})\n"
+            f"👤 *Покупатель:* {name}\n"
             f"📞 *Телефон:* {phone}\n"
             f"📍 *Адрес:* {city}, {address}\n\n"
             f"👟 *Товары:*\n"
         )
-
         for item in cart_items:
             product = item['product']
-            chosen_size = str(item['size']).strip()
-            quantity = item['quantity']
+            message += f"▪️ {product.name} (Разм: {item['size']}) — {item['quantity']} шт.\n"
 
-            message += f"▪️ {product.name} (Разм: {chosen_size}) — {quantity} шт. x {product.price} сом\n"
-
-            # ЛОГИКА УДАЛЕНИЯ РАЗМЕРА ИЗ СТРОКИ SIZES
+            # Списание размеров
             if product.sizes:
                 current_sizes = [s.strip() for s in product.sizes.split(',') if s.strip()]
-
+                chosen_size = str(item['size']).strip()
                 if chosen_size in current_sizes:
                     current_sizes.remove(chosen_size)
                     product.sizes = ",".join(current_sizes)
                     product.save()
 
         message += f"\n💰 *Итого к оплате:* {total_price} сом"
-
-        # Кодируем текст для ссылки
         encoded_message = urllib.parse.quote(message)
-
-        # Твои 4 номера менеджеров
-        whatsapp_numbers = [
-            "996500070629",
-            "996501358735",
-            "996707319213",
-            "996704215450"
-        ]
-        chosen_phone = random.choice(whatsapp_numbers)
         whatsapp_url = f"https://api.whatsapp.com/send?phone={chosen_phone}&text={encoded_message}"
 
-        # Очищаем корзину в сессии
         request.session['cart'] = {}
         request.session.modified = True
 
         return redirect(whatsapp_url)
 
-    # Отображение страницы оформления для GET-запроса
-    context = {
-        'cart_items': cart_items,
-        'total_price': total_price,
-        'total_quantity': total_quantity,
-    }
+    context = {'cart_items': cart_items, 'total_price': total_price, 'total_quantity': total_quantity}
     return render(request, 'shop/checkout.html', context)
-
 
 
 
@@ -355,67 +337,95 @@ def profile_view(request):
     return render(request, 'shop/profile.html', context)
 
 
-from django.shortcuts import render, redirect
+from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum
+from django.db.models import Sum, Count
 from django.utils import timezone
 from datetime import timedelta
-from django.contrib.auth.models import User
-from .models import Order, Product
+from django.contrib.auth import get_user_model
+from .models import Order, Product, ManagerProfile
 
 
 @login_required(login_url='shop:login')
 def admin_dashboard(request):
-    # Строгая проверка по базе данных: входит ли пользователь в группу "Сотрудники"
-    is_employee = request.user.groups.filter(name='Сотрудники').exists()
+    if not request.user.is_staff:
+        return render(request, 'shop/access_denied.html')
 
-    # Разрешаем доступ, только если он в группе "Сотрудники" или является главным суперпользователем
-    if not (is_employee or request.user.is_superuser):
-        # Если человека нет в базе сотрудников, отдаем шаблон с ошибкой доступа
-        return render(request, 'shop/access_denied.html', {
-            'username': request.user.username,
-            'full_name': request.user.get_full_name()
-        })
+    User = get_user_model()
 
-    # ЕСЛИ ЧЕЛОВЕК НАЙДЕН В БАЗЕ — ЗАГРУЖАЕМ ДАННЫЕ ДЛЯ МАКЕТА:
-    total_orders_count = Order.objects.count()
-    total_customers_count = User.objects.filter(is_staff=False).count()
+    # 1. Данные для главной панели статистики
+    total_orders = Order.objects.count()
+    total_users = User.objects.count()
+    total_products = Product.objects.count()
+    total_revenue = Order.objects.aggregate(total=Sum('total_price'))['total'] or 0
 
-    # Считаем реальную выручку
-    revenue_data = Order.objects.aggregate(total=Sum('total_price'))
-    total_revenue = revenue_data['total'] if revenue_data['total'] else 0
-    total_products_count = Product.objects.count()
-    recent_orders = Order.objects.all().order_by('-id')[:5]
-
-    # Данные для графика
-    chart_labels = []
-    chart_data = []
+    # 2. Данные для графика продаж за 7 дней
+    sales_dates = []
+    sales_amounts = []
     today = timezone.now().date()
 
     for i in range(6, -1, -1):
-        day = today - timedelta(days=i)
-        chart_labels.append(day.strftime('%d %b'))
-        day_revenue = Order.objects.filter(created_at__date=day).aggregate(total=Sum('total_price'))['total'] or 0
-        chart_data.append(float(day_revenue))
+        date = today - timedelta(days=i)
+        sales_dates.append(date.strftime('%d %b'))
+        daily_sum = Order.objects.filter(created_at__date=date).aggregate(total=Sum('total_price'))['total'] or 0
+        sales_amounts.append(float(daily_sum))
+
+    recent_orders = Order.objects.order_by('-id')[:5]
 
     context = {
-        'total_orders': total_orders_count,
-        'total_customers': total_customers_count,
-        'total_revenue': total_revenue,
-        'total_products': total_products_count,
+        'total_orders': total_orders,
+        'total_users': total_users,
+        'total_price': total_revenue,
+        'total_products': total_products,
         'recent_orders': recent_orders,
-        'chart_labels': chart_labels,
-        'chart_data': chart_data,
+        'sales_dates': sales_dates,
+        'sales_amounts': sales_amounts,
     }
     return render(request, 'shop/admin_dashboard.html', context)
 
 
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-# Импортируем модель категории, если она называется Category
-from .models import Product, Category
+# НОВАЯ ОТДЕЛЬНАЯ ФУНКЦИЯ ДЛЯ СТРАНИЦЫ МЕНЕДЖЕРОВ
+@login_required(login_url='shop:login')
+def admin_team(request):
+    if not request.user.is_staff:
+        return render(request, 'shop/access_denied.html')
 
+    managers_data = []
+    profiles = ManagerProfile.objects.select_related('user')
 
+    for profile in profiles:
+        manager_phone = str(profile.phone).strip().replace('+', '') if profile.phone else None
+        manager_revenue = 0
+
+        if manager_phone:
+            orders = Order.objects.all()
+            for order in orders:
+                if order.manager_phone:
+                    clean_order_phone = str(order.manager_phone).strip().replace('+', '')
+                    if clean_order_phone == manager_phone:
+                        manager_revenue += float(order.total_price) if order.total_price else 0.0
+
+        salary_float = float(profile.salary) if profile.salary else 0.0
+        bonus_percent_float = float(profile.bonus_percent) if profile.bonus_percent else 0.0
+
+        bonus_amount = manager_revenue * (bonus_percent_float / 100.0)
+        total_payout = salary_float + bonus_amount
+        first_letter = profile.user.username[0].upper() if profile.user.username else 'M'
+
+        managers_data.append({
+            'name': profile.user.get_full_name() or profile.user.username,
+            'role': profile.get_role_display(),
+            'salary': profile.salary,
+            'bonus_percent': profile.bonus_percent,
+            'revenue': manager_revenue,
+            'payout': total_payout,
+            'first_letter': first_letter
+        })
+
+    context = {
+        'managers_data': managers_data,
+    }
+    return render(request, 'shop/admin_team.html', context)
 @login_required(login_url='shop:login')
 def admin_products(request):
     ALLOWED_EMPLOYEES = ['meder', 'elida', 'boss_lining', 'worker_1']
@@ -564,3 +574,65 @@ def admin_orders(request):
     # Получаем все заказы: самые новые будут отображаться первыми
     orders = Order.objects.all().order_by('-id')
     return render(request, 'shop/admin_orders.html', {'orders': orders})
+
+
+
+from django.db.models import Sum
+from .models import Order, ManagerProfile
+
+@login_required(login_url='shop:login')
+def admin_finances(request):
+    # Проверяем, что зашел именно администратор/персонал
+    if not request.user.is_staff:
+        return redirect('shop:home')
+
+    # Словарь, связывающий телефоны менеджеров из твоего списка с их именами/логинами в базе
+    # Убедись, что пользователи с такими username (например, meder, edil, azamat) созданы в базе!
+    phone_to_username = {
+        "996500706290": "edil",
+        "996501358735": "meder",
+        "996707319213": "azamat",
+        "996704215450": "nurmanbet"
+    }
+
+    managers_data = []
+    total_shop_revenue = 0
+
+    # Получаем всех сотрудников, у которых настроен профиль менеджера
+    profiles = ManagerProfile.objects.select_related('user')
+
+    for profile in profiles:
+        # Ищем, какой номер телефона закреплен за этим username
+        manager_phone = None
+        for phone, username in phone_to_username.items():
+            if username == profile.user.username:
+                manager_phone = phone
+                break
+
+        # Считаем выручку, которую принес данный менеджер (фильтруем по его номеру телефона в заказах)
+        if manager_phone:
+            manager_revenue = Order.objects.filter(phone=manager_phone).aggregate(total=Sum('total_price'))['total'] or 0
+        else:
+            manager_revenue = 0
+
+        total_shop_revenue += manager_revenue
+
+        # Рассчитываем бонус и итоговую сумму к выплате
+        bonus_amount = float(manager_revenue) * (profile.bonus_percent / 100.0)
+        total_payout = float(profile.salary) + bonus_amount
+
+        managers_data.append({
+            'name': profile.user.get_full_name() or profile.user.username,
+            'role': profile.get_role_display(),
+            'salary': profile.salary,
+            'bonus_percent': profile.bonus_percent,
+            'revenue': manager_revenue,
+            'payout': total_payout,
+            'first_letter': profile.user.username[0].upper() if profile.user.username else 'M'
+        })
+
+    context = {
+        'managers_data': managers_data,
+        'total_shop_revenue': total_shop_revenue,
+    }
+    return render(request, 'shop/admin_finances.html', context)
