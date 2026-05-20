@@ -269,12 +269,11 @@ def checkout(request):
         city = request.POST.get('city')
         address = request.POST.get('address')
 
-        # 🔥 НАДЁЖНЫЕ НОМЕРА: Пропиши здесь два твоих номера телефона
-        # (Например: "996555112233", "996700445566")
+        # 🔥 ВПИШИ СВОИ ДВА НОМЕРА СЮДА (в кавычках, без плюсов, например "996555112233")
         NUMBER_1 = "996500070629"
         NUMBER_2 = "996501358735"
 
-        # Покупателя перенаправит в чат к первому номеру, но внутри будут видны оба!
+        # Клиент переходит по ссылке к первому менеджеру, но внутри текста будут оба номера!
         chosen_phone = NUMBER_1
 
         # Сохраняем заказ в базу данных
@@ -296,16 +295,16 @@ def checkout(request):
                 size=item['size']
             )
 
-        # Формируем текст для WhatsApp (Включаем информацию для обоих номеров)
+        # Формируем текст для WhatsApp (номера красиво отобразятся в самом сообщении)
         message = (
             f"🔔 *НОВЫЙ ЗАКАЗ LI-NING!* 🔔\n\n"
             f"📦 *Номер заказа:* #{order.id}\n"
             f"👤 *Покупатель:* {name}\n"
             f"📞 *Телефон:* {phone}\n"
             f"📍 *Адрес:* {city}, {address}\n\n"
-            f"👥 *Менеджеры оповещены:* \n"
-            f"1️⃣ {NUMBER_1}\n"
-            f"2️⃣ {NUMBER_2}\n\n"
+            f"👥 *Менеджеры проекта:* \n"
+            f"• Основной: {NUMBER_1}\n"
+            f"• Второй: {NUMBER_2}\n\n"
             f"👟 *Товары:*\n"
         )
         for item in cart_items:
@@ -324,7 +323,7 @@ def checkout(request):
         message += f"\n💰 *Итого к оплате:* {total_price} сом"
         encoded_message = urllib.parse.quote(message)
 
-        # Генерация чистой ссылки редиректа без сбоев сервера
+        # Генерация чистой ссылки без сбоев сервера
         whatsapp_url = f"https://api.whatsapp.com/send?phone={chosen_phone}&text={encoded_message}"
 
         request.session['cart'] = {}
@@ -334,8 +333,6 @@ def checkout(request):
 
     context = {'cart_items': cart_items, 'total_price': total_price, 'total_quantity': total_quantity}
     return render(request, 'shop/checkout.html', context)
-
-
 
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
