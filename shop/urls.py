@@ -24,4 +24,5 @@ urlpatterns = [
     path('dashboard/orders/', views.admin_orders, name='admin_orders'),
 path('dashboard/finances/', views.admin_finances, name='admin_finances'),
 path('dashboard/team/', views.admin_team, name='admin_team'),
+path('admin-panel/team/pay/<int:manager_id>/', views.pay_manager, name='pay_manager'),
 ]

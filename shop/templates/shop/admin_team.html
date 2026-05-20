@@ -63,9 +63,16 @@
 
                         <div class="bg-gray-800 p-4 rounded-xl flex justify-between items-center border border-gray-700">
                             <span class="text-xs font-bold text-gray-400 uppercase tracking-tighter">К выплате:</span>
+
                             <span class="text-xl font-black text-blue-500">{{ manager.payout|floatformat:2 }} сом</span>
                         </div>
-
+                <form action="{% url 'shop:pay_manager' manager.id %}" method="POST" class="mt-4">
+                            {% csrf_token %}
+                            <button type="submit" onclick="return confirm('Вы уверены, что хотите выплатить зарплату и обнулить текущую сумму?');"
+                                    class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition text-center shadow-lg block">
+                                💵 Выплатить зарплату
+                            </button>
+                        </form>
                     </div>
                     {% empty %}
                     <div class="col-span-full text-center py-10">
@@ -75,7 +82,37 @@
                 </div>
             </div>
         </div>
+<div class="bg-gray-800 p-6 rounded-xl border border-gray-700 mt-8">
+                <h2 class="text-xl font-bold text-white mb-2">📜 История последних выплат</h2>
+                <p class="text-sm text-gray-400 mb-4">Архив всех выданных денежных средств команде</p>
 
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-gray-400">
+                        <thead class="text-xs uppercase bg-gray-900 text-gray-400 border-b border-gray-700">
+                            <tr>
+                                <th class="p-4">Дата</th>
+                                <th class="p-4">Менеджер</th>
+                                <th class="p-4 text-right">Выплачено</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-700">
+                            {% for log in payout_logs %}
+                            <tr class="hover:bg-gray-700/50 transition">
+                                <td class="p-4 font-medium text-gray-300">{{ log.date|date:"d.m.Y H:i" }}</td>
+                                <td class="p-4 text-white font-semibold">
+                                    {{ log.manager.user.username }}
+                                </td>
+                                <td class="p-4 text-right text-green-400 font-bold">+{{ log.amount }} сом</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center py-6 text-gray-500">Выплат еще не производилось.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
     </div>
 </div>
 {% endblock %}

@@ -103,3 +103,23 @@ class ManagerProfile(models.Model):
     def __str__(self):
         return f"{self.user.get_full_name() or self.user.username} ({self.get_role_display()})"
 
+from django.db import models
+from django.utils import timezone
+
+# Если у тебя менеджеры привязаны к стандартным пользователям (User) или к отдельной модели,
+# убедись, что ForeignKey указывает на правильную модель. Предположим, они привязаны к ManagerProfile.
+
+class PayoutLog(models.Model):
+    manager = models.ForeignKey('ManagerProfile', on_delete=models.CASCADE, verbose_name="Менеджер", related_name="payouts")
+    amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Сумма выплаты")
+    date = models.DateTimeField(default=timezone.now, verbose_name="Дата выплаты")
+
+    class Meta:
+        verbose_name = "Лог выплаты"
+        verbose_name = "Логи выплат"
+        ordering = ['-date'] # Новые выплаты будут сверху
+
+    def __str__(self):
+        # Безопасно вытаскиваем имя пользователя
+        manager_name = self.manager.user.username if self.manager.user else "Менеджер"
+        return f"{self.date.strftime('%d.%m.%Y')} — Выплачено {manager_name}: {self.amount} сом"

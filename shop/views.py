@@ -4,7 +4,8 @@ from django.contrib.auth import authenticate, login as auth_login, logout as aut
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .models import Order, OrderItem  # <-- ТЕПЕРЬ ОНА ЗДЕСЬ И НИКОМУ НЕ МЕШАЕТ
-# 1. Главная страница
+
+from django.contrib.admin.views.decorators import staff_member_required
 def home(request):
     # Берем категории и только популярные товары для главной страницы
     categories = Category.objects.all()
@@ -270,6 +271,7 @@ def checkout(request):
         whatsapp_numbers = [
             "996500070629",  # meder
             "996501358735",  # илгиз
+            "996220041647"
         ]
         chosen_phone = random.choice(whatsapp_numbers)
 
@@ -384,46 +386,45 @@ def admin_dashboard(request):
     return render(request, 'shop/admin_dashboard.html', context)
 
 
-# НОВАЯ ОТДЕЛЬНАЯ ФУНКЦИЯ ДЛЯ СТРАНИЦЫ МЕНЕДЖЕРОВ
-@login_required(login_url='shop:login')
+@staff_member_required
 def admin_team(request):
-    if not request.user.is_staff:
-        return render(request, 'shop/access_denied.html')
-
+    # 1. Получаем из базы всех менеджеров
+    profiles = ManagerProfile.objects.all()
     managers_data = []
-    profiles = ManagerProfile.objects.select_related('user')
 
+    # 2. Наполняем список менеджеров расчетами
     for profile in profiles:
-        manager_phone = str(profile.phone).strip().replace('+', '') if profile.phone else None
-        manager_revenue = 0
+        # Фильтруем по номеру телефона
+        revenue = Order.objects.filter(
+            manager_phone=profile.phone,
+            status='delivered'  # если в базе на русском, то измени на 'доставлено'
+        ).aggregate(total=Sum('total_price'))['total'] or 0
 
-        if manager_phone:
-            orders = Order.objects.all()
-            for order in orders:
-                if order.manager_phone:
-                    clean_order_phone = str(order.manager_phone).strip().replace('+', '')
-                    if clean_order_phone == manager_phone:
-                        manager_revenue += float(order.total_price) if order.total_price else 0.0
+        # Рассчитываем бонус и выплату
+        bonus = (float(revenue) * float(profile.bonus_percent or 0)) / 100
+        payout = float(profile.salary or 0) + bonus
 
-        salary_float = float(profile.salary) if profile.salary else 0.0
-        bonus_percent_float = float(profile.bonus_percent) if profile.bonus_percent else 0.0
-
-        bonus_amount = manager_revenue * (bonus_percent_float / 100.0)
-        total_payout = salary_float + bonus_amount
-        first_letter = profile.user.username[0].upper() if profile.user.username else 'M'
+        # ИСПРАВЛЕНО: Берем имя из связанного объекта user
+        manager_name = profile.user.username if profile.user else "Менеджер"
 
         managers_data.append({
-            'name': profile.user.get_full_name() or profile.user.username,
-            'role': profile.get_role_display(),
+            'id': profile.id,
+            'name': manager_name,  # Передаем исправленное имя
+            'first_letter': manager_name[0].upper(),  # Первая буква для аватарки
+            'role': 'Менеджер по продажам',
             'salary': profile.salary,
             'bonus_percent': profile.bonus_percent,
-            'revenue': manager_revenue,
-            'payout': total_payout,
-            'first_letter': first_letter
+            'revenue': revenue,
+            'payout': payout,
         })
 
+    # 3. Получаем историю выплат для таблицы внизу
+    payout_logs = PayoutLog.objects.all().select_related('manager')
+
+    # 4. Передаем переменные в context
     context = {
         'managers_data': managers_data,
+        'payout_logs': payout_logs,
     }
     return render(request, 'shop/admin_team.html', context)
 @login_required(login_url='shop:login')
@@ -636,3 +637,39 @@ def admin_finances(request):
         'total_shop_revenue': total_shop_revenue,
     }
     return render(request, 'shop/admin_finances.html', context)
+
+
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib.admin.views.decorators import staff_member_required
+from .models import ManagerProfile, PayoutLog, Order  # проверь названия своих моделей
+
+
+@staff_member_required
+def pay_manager(request, manager_id):
+    if request.method == 'POST':
+        manager = get_object_or_404(ManagerProfile, id=manager_id)
+
+        # 1. Фильтруем заказы по номеру телефона менеджера и статусу 'доставлено'
+        # (так как поля manager_id в модели Order нет)
+        orders = Order.objects.filter(
+            manager_phone=manager.phone,
+            status='доставлено'  # Используем кириллицу, как в твоей базе данных
+        )
+
+        current_payout = 0
+        # 2. Вычисляем сумму бонусов от всех доставленных заказов
+        for order in orders:
+            current_payout += float(order.total_price or 0) * float(manager.bonus_percent or 0) / 100
+
+        # 3. Добавляем фиксированный оклад менеджера к итоговой выплате
+        current_payout += float(manager.salary or 0)
+
+        # 4. Если сумма больше нуля, фиксируем выплату и обновляем заказы
+        if current_payout > 0:
+            # Создаем лог выплаты в базе данных
+            PayoutLog.objects.create(manager=manager, amount=current_payout)
+
+            # Меняем статус заказов, чтобы они заархивировались и больше не попадали в расчет
+            orders.update(status='выплачено')  # или 'архив', главное чтобы не 'доставлено'
+
+    return redirect('shop:admin_team')
